@@ -28,8 +28,8 @@ def ask_openai(user_text, tone):
 
     payload = {
         "model": OPENAI_MODEL,
-        "input": user_text,
-        "system": TONE_SYSTEM_MESSAGES[tone]
+        "instructions": TONE_SYSTEM_MESSAGES[tone],
+        "input": user_text
     }
 
     response = requests.post(url, headers=headers, json=payload)
