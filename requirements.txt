@@ -3,3 +3,5 @@ fastapi~=0.115.9
 uvicorn[standard]~=0.34.2
 requests~=2.32.3
 openai~=1.80.0
+dotenv~=0.9.9
+python-dotenv~=1.1.0

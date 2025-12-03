@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from openai import OpenAI
 
-#load_dotenv()
+load_dotenv()
 
 TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
@@ -23,14 +23,6 @@ TONE_SYSTEM_MESSAGES = {
 }
 
 
-response = client.responses.create(
-    model="gpt-4o",
-    instructions="You are a coding assistant that talks like a pirate.",
-    input="How do I check if a Python object is an instance of a class?",
-)
-
-print(response.output_text)
-
 def ask_openai(user_text, tone):
     url = "https://api.openai.com/v1/responses"
 
@@ -46,6 +38,7 @@ def ask_openai(user_text, tone):
     except Exception as e:
         return f"⚠️ Помилка OpenAI: {str (e)}"
 
+
 @bot.message_handler(commands=['start'])
 def start_handler(message):
     bot.reply_to (message,
@@ -55,6 +48,7 @@ def start_handler(message):
                   "• formal — формальний\n"
                   "• funny — кумедний\n\n"
                   "Змінити тон: /set_tone [тон]")
+
 
 @bot.message_handler(commands=['set_tone'])
 def set_tone_handler(message):
@@ -74,6 +68,7 @@ def set_tone_handler(message):
     tone = new_tone
     bot.reply_to(message, f"✅ Тон змінено на: {tone}")
 
+
 @bot.message_handler(func=lambda msg: True)
 def ai_chat(message):
     answer = ask_openai(message.text, tone)
@@ -84,12 +79,14 @@ def ai_chat(message):
     else:
         bot.reply_to(message, answer)
 
+
 @app.post("/webhook")
 async def process_webhook(request: Request):
     json_data = await request.json()
     update = telebot.types.Update.de_json(json_data)
     bot.process_new_updates([update])
     return {"ok": True}
+
 
 @app.get("/")
 def home():
