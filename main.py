@@ -1,14 +1,17 @@
 import os
 import telebot
+from dotenv import load_dotenv
 from fastapi import FastAPI, Request
-import requests
-import json
+from openai import OpenAI
 
-TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
-OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
+load_dotenv()
+
+TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 OPENAI_MODEL = "gpt-5-nano"
 
 bot = telebot.TeleBot(TOKEN, threaded=False)
+client = OpenAI(api_key=OPENAI_API_KEY)
 app = FastAPI()
 
 tone = "friendly"  # Тон за замовчуванням
@@ -18,27 +21,30 @@ TONE_SYSTEM_MESSAGES = {
     "formal": "You are a very formal AI assistant. Answer strictly, politely and professionally.",
     "funny": "You are a humorous AI assistant. Answer in a funny way, add jokes.",
 }
+
+
+response = client.responses.create(
+    model="gpt-4o",
+    instructions="You are a coding assistant that talks like a pirate.",
+    input="How do I check if a Python object is an instance of a class?",
+)
+
+print(response.output_text)
+
 def ask_openai(user_text, tone):
     url = "https://api.openai.com/v1/responses"
 
-    headers = {
-        "Authorization": f"Bearer {OPENAI_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "model": OPENAI_MODEL,
-        "instructions": TONE_SYSTEM_MESSAGES[tone],
-        "input": user_text
-    }
-
-    response = requests.post(url, headers=headers, json=payload)
-    data = response.json()
-
     try:
-        return data["output_text"]
-    except:
-        return "Error: " + json.dumps(data)
+        resp = client.responses.create(
+            model=OPENAI_MODEL,
+            instructions=TONE_SYSTEM_MESSAGES[tone],
+            input=user_text
+        )
+
+        return resp.output_text or "⚠️ Немає текстової відповіді"
+
+    except Exception as e:
+        return f"⚠️ Помилка OpenAI: {str (e)}"
 
 @bot.message_handler(commands=['start'])
 def start_handler(message):
@@ -71,7 +77,12 @@ def set_tone_handler(message):
 @bot.message_handler(func=lambda msg: True)
 def ai_chat(message):
     answer = ask_openai(message.text, tone)
-    bot.reply_to(message, answer)
+
+    if len(answer) > 4095:
+        for x in range(0, len(answer), 4095):
+            bot.reply_to(message, answer[x:x + 4095])
+    else:
+        bot.reply_to(message, answer)
 
 @app.post("/webhook")
 async def process_webhook(request: Request):
