@@ -6,7 +6,7 @@ import json
 
 TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
-OPENAI_MODEL = "gpt-oss-20b"
+OPENAI_MODEL = "gpt-5-nano"
 
 bot = telebot.TeleBot(TOKEN, threaded=False)
 app = FastAPI()
