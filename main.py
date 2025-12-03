@@ -17,6 +17,11 @@ async def process_webhook(request: Request):
     bot.process_new_updates([update])
     return {"ok": True}
 
+@app.get("/")
+def home():
+    return {"status": "ok"}
+
+
 if __name__ == '__main__':
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
