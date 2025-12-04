@@ -85,10 +85,21 @@ def start(message):
 @bot.message_handler(func=lambda msg: True)
 def ask_for_type(message):
     city = message.text.strip()
+
+    waiting_msg = bot.send_animation(
+        message.chat.id,
+        animation="https://media.tenor.com/XFz9zaC46VcAAAAM/searching-digging.gif",
+        caption="⏳ Зачекайте, шукаємо Ваше місто місто..."
+    )
+
     location_key = get_location_key(city)
 
     if not location_key:
-        bot.reply_to(message, "❌ Не вдалося знайти місто. Спробуй іншу назву.")
+        bot.edit_message_caption (
+            chat_id=message.chat.id,
+            message_id=waiting_msg.message_id,
+            caption="❌ Не вдалося знайти місто. Спробуй іншу назву."
+        )
         return
 
     kb = InlineKeyboardMarkup()
@@ -100,9 +111,10 @@ def ask_for_type(message):
         InlineKeyboardButton("Прогноз на 5 днів", callback_data=f"5day|{location_key}|{city}")
     )
 
-    bot.send_message(
-        message.chat.id,
-        f"Місто: *{city.capitalize()}*\nОберіть тип прогнозу:",
+    bot.edit_message_caption (
+        chat_id=message.chat.id,
+        message_id=waiting_msg.message_id,
+        caption=f"Місто: *{city.capitalize ()}*\nОберіть тип прогнозу:",
         parse_mode="Markdown",
         reply_markup=kb
     )
@@ -114,11 +126,23 @@ def process_choice(call):
 
     action, key, city = call.data.split("|")
 
+    wait_msg = bot.send_animation(
+        chat_id,
+        animation="https://media.tenor.com/tHvaUzLZ2d8AAAAM/need-hug.gif",
+        caption="⏳ Отримуємо дані..."
+    )
+
+ # ============  ПОТОЧНА ПОГОДА  ============
     if action == "now":
         w = get_weather_now(key)
         if not w:
-            bot.send_message(chat_id, "Помилка отримання погоди.")
+            bot.edit_message_caption(
+                chat_id=chat_id,
+                message_id=wait_msg.message_id,
+                caption="❌ Помилка отримання погоди."
+            )
             return
+
         text = (
             f"🌍 *{city.capitalize()}*\n"
             f"📡 {w['WeatherText']}\n"
@@ -126,13 +150,25 @@ def process_choice(call):
             f"💨 Вітер: {w['Wind']['Speed']['Metric']['Value']} км/год\n"
             f"💧 Вологість: {w['RelativeHumidity']}%\n"
         )
-        bot.send_message(chat_id, text, parse_mode="Markdown")
 
+        bot.edit_message_caption(
+            chat_id=chat_id,
+            message_id=wait_msg.message_id,
+            caption=text,
+            parse_mode="Markdown"
+        )
+
+    # ============  ПРОГНОЗ НА 1 ДЕНЬ  ============
     elif action == "1day":
         f = get_forecast_1day(key)
         if not f:
-            bot.send_message(chat_id, "Помилка запиту прогнозу.")
+            bot.edit_message_caption(
+                chat_id=chat_id,
+                message_id=wait_msg.message_id,
+                caption="❌ Помилка запиту прогнозу."
+            )
             return
+
         date = f["Date"].split("T")[0]
         min_t = f["Temperature"]["Minimum"]["Value"]
         max_t = f["Temperature"]["Maximum"]["Value"]
@@ -144,12 +180,23 @@ def process_choice(call):
             f"🌡 {min_t}°C → {max_t}°C\n"
             f"☁️ {phrase}"
         )
-        bot.send_message(chat_id, text, parse_mode="Markdown")
 
+        bot.edit_message_caption(
+            chat_id=chat_id,
+            message_id=wait_msg.message_id,
+            caption=text,
+            parse_mode="Markdown"
+        )
+
+    # ============  ПРОГНОЗ НА 5 ДНІВ  ============
     elif action == "5day":
         forecast = get_forecast_5days(key)
         if not forecast:
-            bot.send_message(chat_id, "Помилка запиту прогнозу.")
+            bot.edit_message_caption(
+                chat_id=chat_id,
+                message_id=wait_msg.message_id,
+                caption="❌ Помилка запиту прогнозу."
+            )
             return
 
         text = f"📅 *Прогноз на 5 днів — {city.capitalize()}*\n"
@@ -160,7 +207,12 @@ def process_choice(call):
             phrase = day["Day"]["IconPhrase"]
             text += f"\n📆 {date}\n🌡 {min_t}°C → {max_t}°C\n☁️ {phrase}\n"
 
-        bot.send_message(chat_id, text, parse_mode="Markdown")
+        bot.edit_message_caption(
+            chat_id=chat_id,
+            message_id=wait_msg.message_id,
+            caption=text,
+            parse_mode="Markdown"
+        )
 
     bot.answer_callback_query(call.id)
 
