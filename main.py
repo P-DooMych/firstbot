@@ -205,9 +205,25 @@ def home():
     return {"status": "OK", "bot": "weather-bot"}
 
 if __name__ == '__main__':
-    import uvicorn
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=int(os.environ.get("PORT", 8000))
-    )
+    port = os.environ.get("PORT")
+
+    # для запуску на Render
+    if port:
+        import uvicorn
+
+        RENDER_URL = os.environ.get("RENDER_EXTERNAL_URL")
+        bot.set_webhook(url=RENDER_URL, drop_pending_updates=True)
+
+        uvicorn.run(
+            "main:app",
+            host="0.0.0.0",
+            port=int(port)
+        )
+
+    # для локального запуску
+    else:
+        try:
+            bot.delete_webhook ()
+        except:
+            pass
+        bot.infinity_polling (skip_pending=True)
