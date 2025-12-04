@@ -5,16 +5,23 @@ import requests
 from dotenv import load_dotenv
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
+# Завантажує змінні середовища з .env файлу
 load_dotenv()
 
+# Отримує токени зі змінних середовища
 TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 ACCU_API_KEY = os.environ.get("ACCUWEATHER_API_KEY")
 
+# Ініціалізація Telegram-бота
 bot = telebot.TeleBot(TOKEN, threaded=False)
+
+# Створення FastAPI сервера
 app = FastAPI()
 
+
+# ===================== ПОШУК МІСТА =====================
 def get_location_key(city_name: str):
-    languages = ["uk-UA", "en-US"]
+    languages = ["uk-UA", "en-US"] # Пробує дві мови: українську та англійську
     for lang in languages:
         url = "http://dataservice.accuweather.com/locations/v1/cities/search"
         params = {
@@ -27,6 +34,8 @@ def get_location_key(city_name: str):
             return r[0]["Key"]
     return None
 
+
+# ===================== ПОГОДА СТАНОМ НА ЗАРАЗ =====================
 def get_weather_now(location_key: str):
     url = f"http://dataservice.accuweather.com/currentconditions/v1/{location_key}"
     params = {
@@ -42,6 +51,8 @@ def get_weather_now(location_key: str):
         return None
     return data[0]
 
+
+# ===================== ПОГОДА НА 1 ДЕНЬ =====================
 def get_forecast_1day(location_key: str):
     url = f"http://dataservice.accuweather.com/forecasts/v1/daily/1day/{location_key}"
     params = {
@@ -57,6 +68,8 @@ def get_forecast_1day(location_key: str):
         return None
     return data["DailyForecasts"][0]
 
+
+# ===================== ПОГОДА НА 5 ДНІВ =====================
 def get_forecast_5days(location_key: str):
     url = f"http://dataservice.accuweather.com/forecasts/v1/daily/5day/{location_key}"
     params = {
@@ -72,7 +85,10 @@ def get_forecast_5days(location_key: str):
         return None
     return data["DailyForecasts"]
 
-# /start - початок розмову з ботом
+
+# ===================== КОМАНДИ БОТА =====================
+
+# /start - початок розмови з ботом
 @bot.message_handler(commands=['start'])
 def start(message):
     bot.reply_to(
@@ -112,10 +128,12 @@ def about_handler(message):
     bot.send_message(message.chat.id, about_text, parse_mode="Markdown")
 
 
+# ===================== ОБРОБКА ТЕКСТУ КОРИСТУВАЧА =====================
 @bot.message_handler(func=lambda msg: True)
 def ask_for_type(message):
     city = message.text.strip()
 
+    # Анімація очікування
     waiting_msg = bot.send_animation(
         message.chat.id,
         animation="https://media.tenor.com/XFz9zaC46VcAAAAM/searching-digging.gif",
@@ -124,11 +142,13 @@ def ask_for_type(message):
 
     location_key = get_location_key(city)
 
+    # Якщо місто не знайдено
     if not location_key:
         bot.delete_message(message.chat.id, waiting_msg.message_id)
         bot.send_message(message.chat.id, "❌ Не вдалося знайти місто. Спробуйте іншу назву.")
         return
 
+    # Кнопки з вибором прогнозу
     kb = InlineKeyboardMarkup()
     kb.add(
         InlineKeyboardButton("Поточна погода", callback_data=f"now|{location_key}|{city}"),
@@ -147,12 +167,14 @@ def ask_for_type(message):
     )
 
 
+# ===================== ОБРОБКА НАТИСКАНЬ КНОПОК =====================
 @bot.callback_query_handler(func=lambda call: True)
 def process_choice(call):
     chat_id = call.message.chat.id
 
     action, key, city = call.data.split("|")
 
+    # Анімація очікування
     wait_msg = bot.send_animation(
         chat_id,
         animation="https://media.tenor.com/tHvaUzLZ2d8AAAAM/need-hug.gif",
@@ -222,6 +244,7 @@ def process_choice(call):
     bot.answer_callback_query(call.id)
 
 
+# ===================== ВЕБХУК ДЛЯ RENDER =====================
 @app.post("/webhook")
 async def webhook(request: Request):
     json_data = await request.json()
@@ -233,6 +256,8 @@ async def webhook(request: Request):
 def home():
     return {"status": "OK", "bot": "weather-bot"}
 
+
+# ===================== ЗАПУСК =====================
 if __name__ == '__main__':
     port = os.environ.get("PORT")
 
@@ -252,7 +277,7 @@ if __name__ == '__main__':
     # для локального запуску
     else:
         try:
-            bot.delete_webhook ()
+            bot.delete_webhook()
         except:
             pass
-        bot.infinity_polling (skip_pending=True)
+        bot.infinity_polling(skip_pending=True)
