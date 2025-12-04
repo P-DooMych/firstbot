@@ -265,9 +265,6 @@ if __name__ == '__main__':
     if port:
         import uvicorn
 
-        RENDER_URL = os.environ.get("RENDER_EXTERNAL_URL")
-        bot.set_webhook(url=RENDER_URL, drop_pending_updates=True)
-
         uvicorn.run(
             "main:app",
             host="0.0.0.0",
