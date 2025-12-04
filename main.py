@@ -14,19 +14,18 @@ bot = telebot.TeleBot(TOKEN, threaded=False)
 app = FastAPI()
 
 def get_location_key(city_name: str):
-    url = "http://dataservice.accuweather.com/locations/v1/cities/search"
-    params = {
-        "apikey": ACCU_API_KEY,
-        "q": city_name,
-        "language": "uk-ua"
-    }
-    r = requests.get(url, params=params)
-    if r.status_code != 200:
-        return None
-    data = r.json()
-    if not data:
-        return None
-    return data[0]["Key"]
+    languages = ["uk-UA", "en-US"]
+    for lang in languages:
+        url = "http://dataservice.accuweather.com/locations/v1/cities/search"
+        params = {
+            "apikey": ACCU_API_KEY,
+            "q": city_name,
+            "language": lang
+        }
+        r = requests.get(url, params=params).json()
+        if r:
+            return r[0]["Key"]
+    return None
 
 def get_weather_now(location_key: str):
     url = f"http://dataservice.accuweather.com/currentconditions/v1/{location_key}"
