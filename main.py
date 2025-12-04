@@ -3,6 +3,7 @@ import telebot
 from fastapi import FastAPI, Request
 import requests
 from dotenv import load_dotenv
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 load_dotenv()
 
@@ -27,7 +28,7 @@ def get_location_key(city_name: str):
         return None
     return data[0]["Key"]
 
-def get_weather(location_key: str):
+def get_weather_now(location_key: str):
     url = f"http://dataservice.accuweather.com/currentconditions/v1/{location_key}"
     params = {
         "apikey": ACCU_API_KEY,
@@ -42,34 +43,127 @@ def get_weather(location_key: str):
         return None
     return data[0]
 
+def get_forecast_1day(location_key: str):
+    url = f"http://dataservice.accuweather.com/forecasts/v1/daily/1day/{location_key}"
+    params = {
+        "apikey": ACCU_API_KEY,
+        "language": "uk-ua",
+        "metric": "true"
+    }
+    r = requests.get(url, params=params)
+    if r.status_code != 200:
+        return None
+    data = r.json()
+    if "DailyForecasts" not in data:
+        return None
+    return data["DailyForecasts"][0]
+
+def get_forecast_5days(location_key: str):
+    url = f"http://dataservice.accuweather.com/forecasts/v1/daily/5day/{location_key}"
+    params = {
+        "apikey": ACCU_API_KEY,
+        "language": "uk-ua",
+        "metric": "true"
+    }
+    r = requests.get(url, params=params)
+    if r.status_code != 200:
+        return None
+    data = r.json()
+    if "DailyForecasts" not in data:
+        return None
+    return data["DailyForecasts"]
+
 @bot.message_handler(commands=['start'])
 def start(message):
     bot.reply_to(
         message,
         "Привіт! Я бот погоди ☀️\n"
-        "Напиши назву міста, і я скажу тобі поточну погоду.\n\n"
+        "Напиши назву міста, і я покажу погоду.\n\n"
         "Наприклад: Київ"
     )
 
 @bot.message_handler(func=lambda msg: True)
-def weather_handler(message):
+def ask_for_type(message):
     city = message.text.strip()
     location_key = get_location_key(city)
+
     if not location_key:
         bot.reply_to(message, "❌ Не вдалося знайти місто. Спробуй іншу назву.")
         return
-    weather = get_weather(location_key)
-    if not weather:
-        bot.reply_to(message, "❌ Не вдалося отримати погоду 😢")
-        return
-    text = (
-        f"🌍 *{city.capitalize()}*\n"
-        f"📡 {weather['WeatherText']}\n"
-        f"🌡 Температура: {weather['Temperature']['Metric']['Value']}°C\n"
-        f"💨 Вітер: {weather['Wind']['Speed']['Metric']['Value']} км/год\n"
-        f"💧 Вологість: {weather['RelativeHumidity']}%\n"
+
+    kb = InlineKeyboardMarkup()
+    kb.add(
+        InlineKeyboardButton("Поточна погода", callback_data=f"now|{location_key}|{city}"),
+        InlineKeyboardButton("Прогноз на 1 день", callback_data=f"1day|{location_key}|{city}")
     )
-    bot.reply_to(message, text, parse_mode="Markdown")
+    kb.add(
+        InlineKeyboardButton("Прогноз на 5 днів", callback_data=f"5day|{location_key}|{city}")
+    )
+
+    bot.send_message(
+        message.chat.id,
+        f"Місто: *{city.capitalize()}*\nОберіть тип прогнозу:",
+        parse_mode="Markdown",
+        reply_markup=kb
+    )
+
+
+@bot.callback_query_handler(func=lambda call: True)
+def process_choice(call):
+    chat_id = call.message.chat.id
+
+    action, key, city = call.data.split("|")
+
+    if action == "now":
+        w = get_weather_now(key)
+        if not w:
+            bot.send_message(chat_id, "Помилка отримання погоди.")
+            return
+        text = (
+            f"🌍 *{city.capitalize()}*\n"
+            f"📡 {w['WeatherText']}\n"
+            f"🌡 Температура: {w['Temperature']['Metric']['Value']}°C\n"
+            f"💨 Вітер: {w['Wind']['Speed']['Metric']['Value']} км/год\n"
+            f"💧 Вологість: {w['RelativeHumidity']}%\n"
+        )
+        bot.send_message(chat_id, text, parse_mode="Markdown")
+
+    elif action == "1day":
+        f = get_forecast_1day(key)
+        if not f:
+            bot.send_message(chat_id, "Помилка запиту прогнозу.")
+            return
+        date = f["Date"].split("T")[0]
+        min_t = f["Temperature"]["Minimum"]["Value"]
+        max_t = f["Temperature"]["Maximum"]["Value"]
+        phrase = f["Day"]["IconPhrase"]
+
+        text = (
+            f"📅 *Прогноз на 1 день — {city.capitalize()}*\n"
+            f"Дата: {date}\n"
+            f"🌡 {min_t}°C → {max_t}°C\n"
+            f"☁️ {phrase}"
+        )
+        bot.send_message(chat_id, text, parse_mode="Markdown")
+
+    elif action == "5day":
+        forecast = get_forecast_5days(key)
+        if not forecast:
+            bot.send_message(chat_id, "Помилка запиту прогнозу.")
+            return
+
+        text = f"📅 *Прогноз на 5 днів — {city.capitalize()}*\n"
+        for day in forecast:
+            date = day["Date"].split("T")[0]
+            min_t = day["Temperature"]["Minimum"]["Value"]
+            max_t = day["Temperature"]["Maximum"]["Value"]
+            phrase = day["Day"]["IconPhrase"]
+            text += f"\n📆 {date}\n🌡 {min_t}°C → {max_t}°C\n☁️ {phrase}\n"
+
+        bot.send_message(chat_id, text, parse_mode="Markdown")
+
+    bot.answer_callback_query(call.id)
+
 
 @app.post("/webhook")
 async def webhook(request: Request):
