@@ -90,17 +90,14 @@ def ask_for_type(message):
     waiting_msg = bot.send_animation(
         message.chat.id,
         animation="https://media.tenor.com/XFz9zaC46VcAAAAM/searching-digging.gif",
-        caption="⏳ Зачекайте, шукаємо Ваше місто місто..."
+        caption="⏳ Зачекайте, шукаємо Ваше місто..."
     )
 
     location_key = get_location_key(city)
 
     if not location_key:
-        bot.edit_message_text(
-            chat_id=message.chat.id,
-            message_id=waiting_msg.message_id,
-            text="❌ Не вдалося знайти місто. Спробуй іншу назву."
-        )
+        bot.delete_message(message.chat.id, waiting_msg.message_id)
+        bot.send_message(message.chat.id, "❌ Не вдалося знайти місто. Спробуйте іншу назву.")
         return
 
     kb = InlineKeyboardMarkup()
@@ -112,10 +109,10 @@ def ask_for_type(message):
         InlineKeyboardButton("Прогноз на 5 днів", callback_data=f"5day|{location_key}|{city}")
     )
 
-    bot.edit_message_text(
-        chat_id=message.chat.id,
-        message_id=waiting_msg.message_id,
-        text=f"Місто: *{city.capitalize ()}*\nОберіть тип прогнозу:",
+    bot.delete_message (message.chat.id, waiting_msg.message_id)
+    bot.send_message (
+        message.chat.id,
+        f"Місто: *{city.capitalize ()}*\nОберіть тип прогнозу:",
         parse_mode="Markdown",
         reply_markup=kb
     )
@@ -136,12 +133,10 @@ def process_choice(call):
  # ============  ПОТОЧНА ПОГОДА  ============
     if action == "now":
         w = get_weather_now(key)
+        bot.delete_message(chat_id, wait_msg.message_id)
+
         if not w:
-            bot.edit_message_text(
-                chat_id=chat_id,
-                message_id=wait_msg.message_id,
-                text="❌ Помилка отримання погоди."
-            )
+            bot.send_message (chat_id, "❌ Помилка отримання погоди.")
             return
 
         text = (
@@ -152,22 +147,15 @@ def process_choice(call):
             f"💧 Вологість: {w['RelativeHumidity']}%\n"
         )
 
-        bot.edit_message_text(
-            chat_id=chat_id,
-            message_id=wait_msg.message_id,
-            text=text,
-            parse_mode="Markdown"
-        )
+        bot.send_message(chat_id, text, parse_mode="Markdown")
 
     # ============  ПРОГНОЗ НА 1 ДЕНЬ  ============
     elif action == "1day":
         f = get_forecast_1day(key)
+        bot.delete_message(chat_id, wait_msg.message_id)
+
         if not f:
-            bot.edit_message_text(
-                chat_id=chat_id,
-                message_id=wait_msg.message_id,
-                text="❌ Помилка запиту прогнозу."
-            )
+            bot.send_message(chat_id, "❌ Помилка запиту прогнозу.")
             return
 
         date = f["Date"].split("T")[0]
@@ -176,44 +164,31 @@ def process_choice(call):
         phrase = f["Day"]["IconPhrase"]
 
         text = (
-            f"📅 *Прогноз на 1 день — {city.capitalize()}*\n"
+            f"📅 *Прогноз на 1 день — {city.capitalize ()}*\n"
             f"Дата: {date}\n"
             f"🌡 {min_t}°C → {max_t}°C\n"
             f"☁️ {phrase}"
         )
-
-        bot.edit_message_text(
-            chat_id=chat_id,
-            message_id=wait_msg.message_id,
-            text=text,
-            parse_mode="Markdown"
-        )
+        bot.send_message(chat_id, text, parse_mode="Markdown")
 
     # ============  ПРОГНОЗ НА 5 ДНІВ  ============
     elif action == "5day":
         forecast = get_forecast_5days(key)
+        bot.delete_message (chat_id, wait_msg.message_id)
+
         if not forecast:
-            bot.edit_message_text(
-                chat_id=chat_id,
-                message_id=wait_msg.message_id,
-                text="❌ Помилка запиту прогнозу."
-            )
+            bot.send_message (chat_id, "❌ Помилка запиту прогнозу.")
             return
 
-        text = f"📅 *Прогноз на 5 днів — {city.capitalize()}*\n"
+        text = f"📅 *Прогноз на 5 днів — {city.capitalize ()}*\n"
         for day in forecast:
-            date = day["Date"].split("T")[0]
+            date = day["Date"].split ("T")[0]
             min_t = day["Temperature"]["Minimum"]["Value"]
             max_t = day["Temperature"]["Maximum"]["Value"]
             phrase = day["Day"]["IconPhrase"]
             text += f"\n📆 {date}\n🌡 {min_t}°C → {max_t}°C\n☁️ {phrase}\n"
 
-        bot.edit_message_text(
-            chat_id=chat_id,
-            message_id=wait_msg.message_id,
-            text=text,
-            parse_mode="Markdown"
-        )
+        bot.send_message (chat_id, text, parse_mode="Markdown")
 
     bot.answer_callback_query(call.id)
 
