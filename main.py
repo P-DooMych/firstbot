@@ -73,14 +73,44 @@ def get_forecast_5days(location_key: str):
         return None
     return data["DailyForecasts"]
 
+# /start - початок розмову з ботом
 @bot.message_handler(commands=['start'])
 def start(message):
     bot.reply_to(
         message,
         "Привіт! Я бот погоди ☀️\n"
         "Напиши назву міста, і я покажу погоду.\n\n"
-        "Наприклад: Київ"
+        "Наприклад: Київ.\n\n"
+        "Доступні команди:\n"
+        "/start – почати\n"
+        "/help – довідка\n"
+        "/about – про бота"
     )
+
+# /help - довідка по командaх
+@bot.message_handler(commands=['help'])
+def help_handler(message):
+    help_text = (
+        "📘 *Допомога*\n\n"
+        "Доступні команди:\n"
+        "/start – почати роботу з ботом\n"
+        "/help – показати список команд\n"
+        "/about – інформація про бота\n\n"
+        "Можеш просто написати місто англійською або українською, і я покажу погоду ☀️"
+    )
+    bot.send_message(message.chat.id, help_text, parse_mode="Markdown")
+
+
+# /about - інформація про бота
+@bot.message_handler(commands=['about'])
+def about_handler(message):
+    about_text = (
+        "ℹ️ *Про бота*\n\n"
+        "Це open source бот, який показує погоду в будь-якому місті 🌍\n"
+        "Працює на API AccuWeather та підтримує двомовний ввод міст.\n\n"
+        "GitHub: https://github.com/P-DooMych/firstbot"
+    )
+    bot.send_message(message.chat.id, about_text, parse_mode="Markdown")
 
 
 @bot.message_handler(func=lambda msg: True)
