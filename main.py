@@ -82,6 +82,7 @@ def start(message):
         "Наприклад: Київ"
     )
 
+
 @bot.message_handler(func=lambda msg: True)
 def ask_for_type(message):
     city = message.text.strip()
@@ -95,10 +96,10 @@ def ask_for_type(message):
     location_key = get_location_key(city)
 
     if not location_key:
-        bot.edit_message_caption (
+        bot.edit_message_text(
             chat_id=message.chat.id,
             message_id=waiting_msg.message_id,
-            caption="❌ Не вдалося знайти місто. Спробуй іншу назву."
+            text="❌ Не вдалося знайти місто. Спробуй іншу назву."
         )
         return
 
@@ -111,10 +112,10 @@ def ask_for_type(message):
         InlineKeyboardButton("Прогноз на 5 днів", callback_data=f"5day|{location_key}|{city}")
     )
 
-    bot.edit_message_caption (
+    bot.edit_message_text(
         chat_id=message.chat.id,
         message_id=waiting_msg.message_id,
-        caption=f"Місто: *{city.capitalize ()}*\nОберіть тип прогнозу:",
+        text=f"Місто: *{city.capitalize ()}*\nОберіть тип прогнозу:",
         parse_mode="Markdown",
         reply_markup=kb
     )
@@ -136,10 +137,10 @@ def process_choice(call):
     if action == "now":
         w = get_weather_now(key)
         if not w:
-            bot.edit_message_caption(
+            bot.edit_message_text(
                 chat_id=chat_id,
                 message_id=wait_msg.message_id,
-                caption="❌ Помилка отримання погоди."
+                text="❌ Помилка отримання погоди."
             )
             return
 
@@ -151,10 +152,10 @@ def process_choice(call):
             f"💧 Вологість: {w['RelativeHumidity']}%\n"
         )
 
-        bot.edit_message_caption(
+        bot.edit_message_text(
             chat_id=chat_id,
             message_id=wait_msg.message_id,
-            caption=text,
+            text=text,
             parse_mode="Markdown"
         )
 
@@ -162,10 +163,10 @@ def process_choice(call):
     elif action == "1day":
         f = get_forecast_1day(key)
         if not f:
-            bot.edit_message_caption(
+            bot.edit_message_text(
                 chat_id=chat_id,
                 message_id=wait_msg.message_id,
-                caption="❌ Помилка запиту прогнозу."
+                text="❌ Помилка запиту прогнозу."
             )
             return
 
@@ -181,10 +182,10 @@ def process_choice(call):
             f"☁️ {phrase}"
         )
 
-        bot.edit_message_caption(
+        bot.edit_message_text(
             chat_id=chat_id,
             message_id=wait_msg.message_id,
-            caption=text,
+            text=text,
             parse_mode="Markdown"
         )
 
@@ -192,10 +193,10 @@ def process_choice(call):
     elif action == "5day":
         forecast = get_forecast_5days(key)
         if not forecast:
-            bot.edit_message_caption(
+            bot.edit_message_text(
                 chat_id=chat_id,
                 message_id=wait_msg.message_id,
-                caption="❌ Помилка запиту прогнозу."
+                text="❌ Помилка запиту прогнозу."
             )
             return
 
@@ -207,10 +208,10 @@ def process_choice(call):
             phrase = day["Day"]["IconPhrase"]
             text += f"\n📆 {date}\n🌡 {min_t}°C → {max_t}°C\n☁️ {phrase}\n"
 
-        bot.edit_message_caption(
+        bot.edit_message_text(
             chat_id=chat_id,
             message_id=wait_msg.message_id,
-            caption=text,
+            text=text,
             parse_mode="Markdown"
         )
 
